@@ -1,10 +1,12 @@
 #!/bin/bash
+set -e
+export DEBIAN_FRONTEND=noninteractive
 
 sudo apt update
 sudo apt install -y --no-install-recommends ntfs-3g exfatprogs dosfstools
 
 sudo sh -c 'echo "blacklist ntfs3" > /etc/modprobe.d/blacklist-ntfs3.conf'
-sudo modprobe -r ntfs3
+sudo modprobe -r ntfs3 || true
 sudo mkdir -p /etc/udev/rules.d
 sudo sh -c 'cat <<EOF > /etc/udev/rules.d/99-ntfs3-disable.rules
 SUBSYSTEM=="block", ENV{ID_FS_TYPE}=="ntfs", ENV{ID_FS_TYPE}="ntfs-3g"
@@ -22,27 +24,30 @@ sudo apt install -y --no-install-recommends \
     lxsession-logout dunst picom dbus-x11 alacritty gxkb libnotify-bin python3-gi gir1.2-notify-0.7
 
 sudo apt install -y --no-install-recommends firefox-esr mousepad mpv galculator gpicview xarchiver lxtask gdebi
-sudo apt purge fortune-mod -y --no-install-recommends
-sudo apt purge "^ibus.*" -y --no-install-recommends
-sudo apt purge mlterm mlterm-tiny mlterm-common --no-install-recommends -y
+sudo apt purge fortune-mod -y --no-install-recommends || true
+sudo apt purge "^ibus.*" -y --no-install-recommends || true
+sudo apt purge mlterm mlterm-tiny mlterm-common --no-install-recommends -y || true
 sudo apt autoremove -y
 
 sudo apt install -y --no-install-recommends fastfetch cava ranger
-
 sudo apt install -y --no-install-recommends locales
+
 echo "en_US.UTF-8 UTF-8" | sudo tee /etc/locale.gen
 echo "ru_RU.UTF-8 UTF-8" | sudo tee -a /etc/locale.gen
 sudo locale-gen
 sudo update-locale LANG=ru_RU.UTF-8 LANGUAGE=ru_RU:ru LC_CTYPE="ru_RU.UTF-8" LC_NUMERIC="ru_RU.UTF-8" LC_TIME="ru_RU.UTF-8" LC_COLLATE="ru_RU.UTF-8" LC_MONETARY="ru_RU.UTF-8" LC_MESSAGES="ru_RU.UTF-8" LC_PAPER="ru_RU.UTF-8" LC_NAME="ru_RU.UTF-8" LC_ADDRESS="ru_RU.UTF-8" LC_TELEPHONE="ru_RU.UTF-8" LC_MEASUREMENT="ru_RU.UTF-8" LC_IDENTIFICATION="ru_RU.UTF-8" LC_ALL="ru_RU.UTF-8"
 
 mkdir -p ~/.icons ~/.themes
+sudo mkdir -p /usr/share/themes /usr/share/icons
 
-git clone --depth 1 https://github.com/B00merang-Artwork/Windows-XP.git ~/.icons/Windows-XP &
+git clone --depth 1 https://github.com/B00merang-Artwork/Windows-XP.git ~/.icons/Windows-XP
 
 TMP="$(mktemp -d)"
 git clone --depth 1 https://github.com/B00merang-Project/Windows-XP.git "$TMP/gtk"
 cp -r "$TMP/gtk/Windows XP Embedded" ~/.themes/
-rm -rf $TMP
+sudo cp -r "$TMP/gtk/Windows XP Embedded" /usr/share/themes/
+rm -rf "$TMP"
+sudo cp -r ~/.icons/Windows-XP /usr/share/icons/
 
 mkdir -p ~/.config/openbox
 mkdir -p ~/.config/pcmanfm/default
@@ -58,10 +63,8 @@ mkdir -p ~/.local/share/gxkb/flags
 mkdir -p ~/.local/bin
 
 wget -O ~/.local/bin/layout_switch.sh https://raw.githubusercontent.com/fakename00121v/debian-xp/refs/heads/main/.local/bin/layout_switch.sh &
-
 wget -O ~/.local/share/gxkb/flags/ru.png https://raw.githubusercontent.com/fakename00121v/debian-xp/refs/heads/main/.local/share/gxkb/flags/ru.png &
 wget -O ~/.local/share/gxkb/flags/us.png https://raw.githubusercontent.com/fakename00121v/debian-xp/refs/heads/main/.local/share/gxkb/flags/us.png &
-
 wget -O ~/.config/tint2/tint2rc https://raw.githubusercontent.com/fakename00121v/debian-xp/refs/heads/main/.config/tint2/tint2rc &
 wget -O ~/.config/pcmanfm/default/wallpaper.jpg https://raw.githubusercontent.com/fakename00121v/debian-xp/refs/heads/main/.config/pcmanfm/default/wallpaper.jpg &
 wget -O ~/.config/gtk-3.0/settings.ini https://raw.githubusercontent.com/fakename00121v/debian-xp/refs/heads/main/.config/gtk-3.0/settings.ini &
@@ -79,7 +82,7 @@ wget -O ~/.config/jgmenu/append.csv https://raw.githubusercontent.com/fakename00
 wait
 chmod +x ~/.local/bin/layout_switch.sh
 
-cat << EOF > $HOME/.config/pcmanfm/default/desktop-items-0.conf
+cat << EOF > "$HOME/.config/pcmanfm/default/desktop-items-0.conf"
 [*]
 wallpaper_mode=stretch
 wallpaper_common=1
@@ -95,18 +98,26 @@ show_trash=1
 show_mounts=1
 EOF
 
-echo "exec dbus-launch --exit-with-session openbox-session" > ~/.xinitrc
+sudo apt install -y --no-install-recommends lightdm lightdm-gtk-greeter
 
-systemctl --user enable --now pipewire.service wireplumber.service pipewire-pulse.service
+sudo mkdir -p /etc/lightdm
+sudo mkdir -p /usr/share/xsessions
+sudo mkdir -p /usr/share/backgrounds
 
-touch "$HOME/.startx_once_flag"
-cat << 'EOF' >> "$HOME/.bashrc"
-# if you see this block pls remove it
-if [ -f "$HOME/.startx_once_flag" ]; then
-    rm "$HOME/.startx_once_flag"
-    exec startx
+sudo wget -O /etc/lightdm/lightdm.conf https://raw.githubusercontent.com/fakename00121v/debian-xp/refs/heads/main/lightdm/lightdm.conf
+sudo wget -O /etc/lightdm/lightdm-gtk-greeter.conf https://raw.githubusercontent.com/fakename00121v/debian-xp/refs/heads/main/lightdm/lightdm-gtk-greeter.conf
+sudo wget -O /usr/share/xsessions/openbox.desktop https://raw.githubusercontent.com/fakename00121v/debian-xp/refs/heads/main/xsessions/openbox.desktop
+sudo wget -O /usr/share/backgrounds/lightdm-wallpaper.jpg https://raw.githubusercontent.com/fakename00121v/debian-xp/refs/heads/main/.config/pcmanfm/default/wallpaper.jpg
+
+sudo rm -f /etc/systemd/system/display-manager.service
+sudo ln -s /lib/systemd/system/lightdm.service /etc/systemd/system/display-manager.service
+sudo systemctl enable lightdm.service || true
+sudo systemctl daemon-reload
+
+if systemctl --user status >/dev/null 2>&1; then
+    systemctl --user enable --now pipewire.service wireplumber.service pipewire-pulse.service || true
 fi
-#end of block
-EOF
 
-loginctl terminate-user "$USER"
+set +e
+sudo systemctl stop display-manager.service 2>/dev/null
+sudo systemctl start lightdm.service 2>/dev/null
